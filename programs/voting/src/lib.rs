@@ -5,7 +5,6 @@ declare_id!("CkANkkC2LgoHpq3jLp5sgiGvxrEJEA76NZjS2NA8w8fr");
 #[program]
 pub mod voting {
     use super::*;
-
     pub fn initialize_poll(ctx: Context<InitializePoll>,
                             poll_id: u64,
                             description: String) -> Result<()> {
@@ -21,7 +20,6 @@ pub mod voting {
         msg!("Poll start time: {}", poll.poll_start);
         Ok(())
     }
-
     pub fn initialize_candidate(ctx: Context<InitializeCandidate>,
                             name: String,
                             _poll_id: u64,
@@ -34,6 +32,27 @@ pub mod voting {
         msg!("Votes: {}", candidate.votes);
         Ok(())
     }
+    pub fn vote(ctx: Context<Vote>,
+                            _name: String,
+                            _poll_id: u64) -> Result<()> {
+        let voter = &mut ctx.accounts.voter;
+        if voter.has_voted {
+            msg!("Voter already voted!");
+            return Err(ErrorCode::AlreadyVoted.into());
+        }
+        voter.has_voted = true;
+        let candidate = &mut ctx.accounts.candidate;
+        candidate.votes += 1;
+        msg!("Vote cast for candidate: {}", candidate.name);
+        msg!("Total votes for {}: {}", candidate.name, candidate.votes);
+        Ok(())
+    }
+}
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("You have already voted for this candidate in this poll.")]
+    AlreadyVoted,
 }
 
 #[derive(Accounts)]
@@ -93,4 +112,40 @@ pub struct Candidate {
     #[max_len(64)]
     pub message: String,
     pub votes: u64,
+}
+
+#[derive(Accounts)]
+#[instruction(name: String, poll_id: u64)]
+pub struct Vote<'info> {
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + Voter::INIT_SPACE,
+        seeds = [
+            b"vote",
+            poll_id.to_le_bytes().as_ref(),
+            user.key().as_ref()
+            ],
+        bump,
+    )]
+    pub voter: Account<'info, Voter>,
+    #[account(
+        mut,
+        seeds = [
+            b"candidate",
+            poll_id.to_le_bytes().as_ref(),
+            name.as_ref()
+        ],
+        bump,
+    )]
+    pub candidate: Account<'info, Candidate>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Voter {
+    pub has_voted: bool,
 }
