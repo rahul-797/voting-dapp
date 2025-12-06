@@ -5,6 +5,9 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
+[programs.localnet]
+voting = "CkANkkC2LgoHpq3jLp5sgiGvxrEJEA76NZjS2NA8w8fr"
+
 [programs.devnet]
 voting = "CkANkkC2LgoHpq3jLp5sgiGvxrEJEA76NZjS2NA8w8fr"
 
@@ -12,7 +15,7 @@ voting = "CkANkkC2LgoHpq3jLp5sgiGvxrEJEA76NZjS2NA8w8fr"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
