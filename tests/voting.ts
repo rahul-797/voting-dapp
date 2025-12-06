@@ -7,8 +7,9 @@ import { Voting } from "../target/types/voting";
 
 describe("voting", () => {
   // Provider & program
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
+  anchor.setProvider(anchor.AnchorProvider.env());
+  const provider = anchor.getProvider();
+  console.log(provider.connection.rpcEndpoint);
 
   const program = anchor.workspace.Voting as Program<Voting>;
   const walletPubkey = provider.wallet.publicKey;
@@ -16,7 +17,8 @@ describe("voting", () => {
   console.log("Program ID from workspace:", program.programId.toBase58());
 
   const num = 6;
-  const name = "Modi";
+  const name1 = "Smooth";
+  const name2 = "Crunchy";
   const pollId = new anchor.BN(num);
 
   it("initializes a poll", async () => {
@@ -55,7 +57,7 @@ describe("voting", () => {
     const message = "BTC to the moon!";
 
     const sig = await program.methods
-      .initializeCandidate(name, pollId, message)
+      .initializeCandidate(name1, pollId, message)
       .accounts({
         user: walletPubkey,
       })
@@ -66,7 +68,7 @@ describe("voting", () => {
     // derive PDA exactly like Rust
     const pollIdBuf = Buffer.alloc(8);
     pollIdBuf.writeBigUInt64LE(BigInt(pollId.toString()));
-    const nameBuf = Buffer.from(name, "utf8");
+    const nameBuf = Buffer.from(name1, "utf8");
 
     const [pollPda] = anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from("candidate"), pollIdBuf, nameBuf],   // must match Rust seeds
@@ -75,7 +77,38 @@ describe("voting", () => {
 
   const candidate = await program.account.candidate.fetch(pollPda);
 
-    expect(candidate.name).to.equal(name);
+    expect(candidate.name).to.equal(name1);
+    expect(candidate.message).to.equal(message);
+    expect(candidate.votes.toNumber()).to.equal(0);
+  });
+
+  it("initializes a candidate", async () => {
+    console.log("Program ID from workspace:", program.programId.toBase58());
+
+    const message = "BTC to the moon!";
+
+    const sig = await program.methods
+      .initializeCandidate(name2, pollId, message)
+      .accounts({
+        user: walletPubkey,
+      })
+      .rpc();
+
+    console.log("initialize_candidate tx:", sig);
+
+    // derive PDA exactly like Rust
+    const pollIdBuf = Buffer.alloc(8);
+    pollIdBuf.writeBigUInt64LE(BigInt(pollId.toString()));
+    const nameBuf = Buffer.from(name2, "utf8");
+
+    const [pollPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("candidate"), pollIdBuf, nameBuf],   // must match Rust seeds
+      program.programId
+    );
+
+  const candidate = await program.account.candidate.fetch(pollPda);
+
+    expect(candidate.name).to.equal(name2);
     expect(candidate.message).to.equal(message);
     expect(candidate.votes.toNumber()).to.equal(0);
   });
@@ -84,7 +117,7 @@ describe("voting", () => {
     console.log("Program ID from workspace:", program.programId.toBase58());
 
     const sig = await program.methods
-      .vote(name, pollId)
+      .vote(name1, pollId)
       .accounts({
         user: walletPubkey,
       })
